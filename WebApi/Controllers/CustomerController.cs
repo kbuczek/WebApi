@@ -7,15 +7,72 @@ namespace WebApi.Controllers
     [ApiController]
     public class CustomerController : ControllerBase
     {
-        [HttpGet]
-        public async Task<IActionResult> Get()
-        {
-            var customers = new List<Customer>
-            {
-                new Customer { Id = 1, FirstName = "Krzysztof", LastName = "Buczek", VAT_Id = "43242342", CreationDate = "19.04.2022", Address = "Kraków, ul. Aaabbbb 1"}
-            };
+        private readonly DataContext _context;
 
-            return Ok(customers); //returning status code 200 - good request
+        public CustomerController(DataContext context)
+        {
+            _context = context;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<List<Customer>>> GetCustomers()
+        {
+            return Ok(await _context.Customers.ToListAsync()); //returning status code 200 - good request
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Customer>> GetCustomer(int id)
+        {
+            var customer = await _context.Customers.FindAsync(id);
+            if(customer == null)
+            {
+                return BadRequest("Customer with Id = " + id + " not found.");
+            }
+            return Ok(customer); //returning status code 200 - good request
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<List<Customer>>> AddCustomer(Customer customer) //dont need to use [FromBody] before Customer, because im using complex parameter (Customer)
+        {
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();  //wait for the db change save
+            return Ok(await _context.Customers.ToListAsync());
+        }
+
+        [HttpPut]
+        public async Task<ActionResult<List<Customer>>> UpdateCustomer(Customer request)
+        {
+            var customer = await _context.Customers.FindAsync(request.Id);
+            if (customer == null)
+            {
+                return BadRequest("Customer with Id = " + request.Id + " not found.");
+            }
+            //other options to overwrite: AutoMapper, here manual overwrtie
+            customer.FirstName = request.FirstName;
+            customer.LastName = request.LastName;
+            customer.vat_Id = request.vat_Id;
+            customer.CreationDate = request.CreationDate;
+            customer.AddressCity = request.AddressCity;
+            customer.AddressStreet = request.AddressStreet;
+            customer.AddressPostalCode = request.AddressPostalCode;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(await _context.Customers.ToListAsync());
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<Customer>> DeleteCustomer(int id)
+        {
+            var customer = await _context.Customers.FindAsync(id);
+            if (customer == null)
+            {
+                return BadRequest("Customer with Id = " + id + " not found.");
+            }
+            _context.Customers.Remove(customer);
+
+            await _context.SaveChangesAsync();
+            return Ok(await _context.Customers.ToListAsync());
         }
     }
 }
